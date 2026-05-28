@@ -1,0 +1,35 @@
+[gd_scene format=3 uid="uid://c53rw16b4cctk"]
+
+[ext_resource type="Script" uid="uid://bk3hxkjegbj68" path="res://scripts/arena.gd" id="1_arena"]
+[ext_resource type="Script" uid="uid://bj8kikmcfeemx" path="res://scripts/player.gd" id="2_player"]
+[ext_resource type="Script" uid="uid://4kh4nfve1mq1" path="res://scripts/hud.gd" id="3_hud"]
+[ext_resource type="Script" uid="uid://ccbsmwb42t6l3" path="res://scripts/game_menu.gd" id="4_menu"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_player"]
+radius = 0.35
+height = 1.65
+
+[node name="Main" type="Node3D" unique_id=47504884]
+script = ExtResource("1_arena")
+
+[node name="Player" type="CharacterBody3D" parent="." unique_id=1220854120]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.05, 6.4)
+script = ExtResource("2_player")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Player" unique_id=723289261]
+shape = SubResource("CapsuleShape3D_player")
+
+[node name="Camera3D" type="Camera3D" parent="Player" unique_id=2126623635]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.58, 0)
+current = true
+fov = 78.0
+near = 0.03
+
+[node name="GunPivot" type="Node3D" parent="Player/Camera3D" unique_id=1189984552]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.34, -0.28, -0.62)
+
+[node name="HUD" type="CanvasLayer" parent="." unique_id=743485810]
+script = ExtResource("3_hud")
+
+[node name="Menu" type="CanvasLayer" parent="." unique_id=1327730156]
+script = ExtResource("4_menu")
