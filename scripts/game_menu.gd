@@ -5,6 +5,8 @@ const SETTINGS_PATH := "user://settings.cfg"
 
 var sensitivity := 1.0
 var volume := 0.75
+var crosshair_color := "white"
+var crosshair_size := "medium"
 var high_scores := {
 	"sixshot": [],
 	"tracking": [],
@@ -26,6 +28,8 @@ var high_scores_label: Label
 var selected_scene_label: Label
 var sensitivity_value: Label
 var volume_value: Label
+var crosshair_color_option: OptionButton
+var crosshair_size_option: OptionButton
 var bgm_player: AudioStreamPlayer
 var shot_player: AudioStreamPlayer
 var hit_player: AudioStreamPlayer
@@ -42,6 +46,7 @@ func _ready() -> void:
 	_build_audio()
 	_build_ui()
 	_apply_volume()
+	_apply_crosshair_settings()
 	_show_main_menu()
 
 func _input(event: InputEvent) -> void:
@@ -105,6 +110,7 @@ func _start_game() -> void:
 		arena.start_mode(selected_mode)
 	if hud:
 		hud.player = player
+		_apply_crosshair_settings()
 		hud.start_training(selected_mode)
 	if player and player.has_method("start_training"):
 		player.start_training(sensitivity)
@@ -205,6 +211,20 @@ func _on_volume_changed(value: float) -> void:
 	_apply_volume()
 	_save_settings()
 
+func _on_crosshair_color_selected(index: int) -> void:
+	var values := ["white", "red", "blue"]
+	if index >= 0 and index < values.size():
+		crosshair_color = values[index]
+	_apply_crosshair_settings()
+	_save_settings()
+
+func _on_crosshair_size_selected(index: int) -> void:
+	var values := ["small", "medium", "large"]
+	if index >= 0 and index < values.size():
+		crosshair_size = values[index]
+	_apply_crosshair_settings()
+	_save_settings()
+
 func _select_mode(mode: String) -> void:
 	selected_mode = mode
 	_update_selected_scene_label()
@@ -215,6 +235,10 @@ func _apply_volume() -> void:
 	var db := linear_to_db(maxf(volume, 0.001))
 	AudioServer.set_bus_volume_db(AudioServer.get_bus_index("Master"), db)
 
+func _apply_crosshair_settings() -> void:
+	if hud and hud.has_method("configure_crosshair"):
+		hud.configure_crosshair(crosshair_color, crosshair_size)
+
 func _load_settings() -> void:
 	var config := ConfigFile.new()
 	var error := config.load(SETTINGS_PATH)
@@ -222,6 +246,8 @@ func _load_settings() -> void:
 		return
 	sensitivity = clampf(float(config.get_value("gameplay", "sensitivity", sensitivity)), 0.1, 10.0)
 	volume = clampf(float(config.get_value("audio", "volume", volume)), 0.0, 1.0)
+	crosshair_color = str(config.get_value("crosshair", "color", crosshair_color))
+	crosshair_size = str(config.get_value("crosshair", "size", crosshair_size))
 	selected_mode = str(config.get_value("gameplay", "selected_mode", selected_mode))
 	for mode in high_scores.keys():
 		high_scores[mode] = _score_array_from_config(config.get_value("scores", mode, []))
@@ -235,6 +261,8 @@ func _save_settings() -> void:
 	config.set_value("gameplay", "sensitivity", sensitivity)
 	config.set_value("gameplay", "selected_mode", selected_mode)
 	config.set_value("audio", "volume", volume)
+	config.set_value("crosshair", "color", crosshair_color)
+	config.set_value("crosshair", "size", crosshair_size)
 	for mode in high_scores.keys():
 		config.set_value("scores", mode, high_scores[mode])
 	config.save(SETTINGS_PATH)
@@ -350,7 +378,7 @@ func _build_ui() -> void:
 	scenes_box.add_child(_button("快速跟枪", func() -> void: _select_mode("tracking_fast")))
 	scenes_box.add_child(_button("返回", _back_from_scenes))
 
-	settings_panel = _panel(Vector2(-230, -135), Vector2(460, 300))
+	settings_panel = _panel(Vector2(-230, -205), Vector2(460, 440))
 	root.add_child(settings_panel)
 	var settings_box := _vbox(settings_panel)
 
@@ -362,6 +390,8 @@ func _build_ui() -> void:
 
 	settings_box.add_child(_slider_row("灵敏度", 0.1, 10.0, 0.1, sensitivity, _on_sensitivity_changed, true))
 	settings_box.add_child(_slider_row("音量", 0.0, 100.0, 1.0, volume * 100.0, _on_volume_changed, false))
+	settings_box.add_child(_option_row("准星颜色", ["白色", "红色", "蓝色"], _crosshair_color_index(), _on_crosshair_color_selected, true))
+	settings_box.add_child(_option_row("准星大小", ["小", "中", "大"], _crosshair_size_index(), _on_crosshair_size_selected, false))
 	settings_box.add_child(_button("返回", _back_from_settings))
 
 func _panel(pos: Vector2, size: Vector2) -> PanelContainer:
@@ -431,6 +461,52 @@ func _slider_row(label_text: String, min_value: float, max_value: float, step: f
 		volume_value = value_label
 		_on_volume_changed(initial)
 	return box
+
+func _option_row(label_text: String, items: Array[String], selected_index: int, callback: Callable, is_color: bool) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.custom_minimum_size = Vector2(380, 42)
+
+	var label := Label.new()
+	label.text = label_text
+	label.custom_minimum_size = Vector2(120, 34)
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row.add_child(label)
+
+	var option := OptionButton.new()
+	option.custom_minimum_size = Vector2(250, 34)
+	for item in items:
+		option.add_item(item)
+	option.select(clampi(selected_index, 0, items.size() - 1))
+	option.item_selected.connect(callback)
+	row.add_child(option)
+
+	if is_color:
+		crosshair_color_option = option
+	else:
+		crosshair_size_option = option
+	return row
+
+func _crosshair_color_index() -> int:
+	match crosshair_color:
+		"white":
+			return 0
+		"red":
+			return 1
+		"blue":
+			return 2
+		_:
+			return 0
+
+func _crosshair_size_index() -> int:
+	match crosshair_size:
+		"small":
+			return 0
+		"medium":
+			return 1
+		"large":
+			return 2
+		_:
+			return 1
 
 func _build_audio() -> void:
 	bgm_player = AudioStreamPlayer.new()

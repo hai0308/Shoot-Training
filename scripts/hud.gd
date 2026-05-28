@@ -6,6 +6,8 @@ var shots := 0
 var hits := 0
 var tracking_samples := 0
 var tracking_on_samples := 0
+var tracking_was_on_target := false
+var tracking_hit_sound_timer := 0.0
 var last_shot_time := -1.0
 var time_left := 60.0
 var current_mode := "sixshot"
@@ -13,6 +15,8 @@ var training_active := false
 var paused := false
 var finish_notified := false
 var crosshair_scale := 1.0
+var crosshair_size_scale := 1.0
+var crosshair_color := Color(0.05, 0.92, 1.0, 0.88)
 var status_token := 0
 var tracking_feedback_timer := 0.0
 
@@ -21,6 +25,7 @@ var time_label: Label
 var accuracy_label: Label
 var status_label: Label
 var crosshair: Control
+var crosshair_rects: Array[ColorRect] = []
 var player: Node
 
 func _ready() -> void:
@@ -48,7 +53,7 @@ func _process(delta: float) -> void:
 				menu.training_finished()
 	crosshair_scale = lerpf(crosshair_scale, 1.0, delta * 12.0)
 	if crosshair:
-		crosshair.scale = Vector2.ONE * crosshair_scale
+		crosshair.scale = Vector2.ONE * crosshair_scale * crosshair_size_scale
 
 func is_training_active() -> bool:
 	return training_active and not paused
@@ -60,6 +65,8 @@ func start_training(mode: String = "sixshot") -> void:
 	hits = 0
 	tracking_samples = 0
 	tracking_on_samples = 0
+	tracking_was_on_target = false
+	tracking_hit_sound_timer = 0.0
 	last_shot_time = -1.0
 	time_left = 60.0
 	current_mode = mode
@@ -125,6 +132,15 @@ func pulse_crosshair() -> void:
 		return
 	crosshair_scale = 1.8
 
+func configure_crosshair(color_name: String, size_name: String) -> void:
+	crosshair_color = _crosshair_color_from_name(color_name)
+	crosshair_size_scale = _crosshair_size_from_name(size_name)
+	for rect in crosshair_rects:
+		if rect:
+			rect.color = crosshair_color
+	if crosshair:
+		crosshair.scale = Vector2.ONE * crosshair_size_scale
+
 func _update_score() -> void:
 	if score_label == null:
 		return
@@ -158,11 +174,19 @@ func _update_tracking_score(delta: float) -> void:
 		return
 	var on_target: bool = player.is_aiming_at_tracking_target()
 	tracking_samples += 1
+	tracking_hit_sound_timer -= delta
 	if on_target:
 		tracking_on_samples += 1
 		score_float += 1000.0 * delta
+		if not tracking_was_on_target or tracking_hit_sound_timer <= 0.0:
+			var audio := get_tree().get_first_node_in_group("game_audio")
+			if audio and audio.has_method("play_hit"):
+				audio.play_hit()
+			tracking_hit_sound_timer = 0.16
 	else:
 		score_float -= 450.0 * delta
+		tracking_hit_sound_timer = 0.0
+	tracking_was_on_target = on_target
 	score = int(round(score_float))
 	_update_score()
 	_update_accuracy()
@@ -255,11 +279,34 @@ func _build_crosshair(root: Control) -> void:
 
 func _add_crosshair_rect(pos: Vector2, size: Vector2) -> void:
 	var rect := ColorRect.new()
-	rect.color = Color(0.05, 0.92, 1.0, 0.88)
+	rect.color = crosshair_color
 	rect.position = pos
 	rect.size = size
 	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	crosshair.add_child(rect)
+	crosshair_rects.append(rect)
+
+func _crosshair_color_from_name(color_name: String) -> Color:
+	match color_name:
+		"white":
+			return Color(1.0, 1.0, 1.0, 0.92)
+		"red":
+			return Color(1.0, 0.1, 0.08, 0.92)
+		"blue":
+			return Color(0.1, 0.55, 1.0, 0.92)
+		_:
+			return Color(1.0, 1.0, 1.0, 0.92)
+
+func _crosshair_size_from_name(size_name: String) -> float:
+	match size_name:
+		"small":
+			return 0.75
+		"medium":
+			return 1.0
+		"large":
+			return 1.35
+		_:
+			return 1.0
 
 func _label(text: String, size: int, align: HorizontalAlignment) -> Label:
 	var label := Label.new()
