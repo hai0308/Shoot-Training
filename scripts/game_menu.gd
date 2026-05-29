@@ -312,81 +312,118 @@ func _build_ui() -> void:
 	add_child(root)
 
 	var background := ColorRect.new()
-	background.color = Color(0.06, 0.075, 0.085, 0.96)
+	background.color = Color(0.035, 0.043, 0.048, 0.98)
 	background.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.add_child(background)
 
+	var top_band := ColorRect.new()
+	top_band.color = Color(0.08, 0.105, 0.115, 0.85)
+	top_band.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	top_band.offset_bottom = 86
+	root.add_child(top_band)
+
+	var bottom_band := ColorRect.new()
+	bottom_band.color = Color(0.02, 0.025, 0.028, 0.72)
+	bottom_band.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	bottom_band.offset_top = -46
+	bottom_band.offset_bottom = 0
+	root.add_child(bottom_band)
+
+	var accent_line := ColorRect.new()
+	accent_line.color = Color(0.05, 0.82, 0.9, 0.85)
+	accent_line.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	accent_line.offset_top = 84
+	accent_line.offset_bottom = 86
+	root.add_child(accent_line)
+
 	var title := Label.new()
-	title.text = "Sixshot Trainer"
+	title.text = "SHOOT TRAINING"
 	title.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	title.position = Vector2(-210, 88)
-	title.size = Vector2(420, 58)
+	title.position = Vector2(-260, 96)
+	title.size = Vector2(520, 58)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 42)
+	title.add_theme_font_size_override("font_size", 46)
 	title.add_theme_color_override("font_color", Color(0.88, 0.97, 1.0))
+	title.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.72))
+	title.add_theme_constant_override("shadow_offset_x", 2)
+	title.add_theme_constant_override("shadow_offset_y", 2)
 	root.add_child(title)
 
-	main_panel = _panel(Vector2(-150, -130), Vector2(300, 300))
+	var subtitle := Label.new()
+	subtitle.text = "Aim, flick, track, repeat."
+	subtitle.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	subtitle.position = Vector2(-220, 152)
+	subtitle.size = Vector2(440, 28)
+	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	subtitle.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	subtitle.add_theme_font_size_override("font_size", 16)
+	subtitle.add_theme_color_override("font_color", Color(0.58, 0.72, 0.76))
+	root.add_child(subtitle)
+
+	var footer := Label.new()
+	footer.text = "Esc 暂停    鼠标瞄准    左键射击"
+	footer.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	footer.offset_top = -42
+	footer.offset_bottom = -8
+	footer.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	footer.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	footer.add_theme_font_size_override("font_size", 14)
+	footer.add_theme_color_override("font_color", Color(0.62, 0.72, 0.74))
+	root.add_child(footer)
+
+	main_panel = _panel(Vector2(-180, -118), Vector2(340, 320))
 	root.add_child(main_panel)
 	var main_box := _vbox(main_panel)
+	main_box.add_child(_section_title("主菜单"))
 	main_box.add_child(_button("开始游戏", _start_game))
 	selected_scene_label = Label.new()
 	selected_scene_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	selected_scene_label.add_theme_font_size_override("font_size", 16)
-	selected_scene_label.custom_minimum_size = Vector2(260, 28)
+	selected_scene_label.add_theme_color_override("font_color", Color(0.56, 0.86, 0.92))
+	selected_scene_label.custom_minimum_size = Vector2(300, 28)
 	main_box.add_child(selected_scene_label)
 	main_box.add_child(_button("选择场景", _show_scenes_from_main))
 	main_box.add_child(_button("设置", _show_settings_from_main))
 	main_box.add_child(_button("退出游戏", _quit_game))
 	_update_selected_scene_label()
 
-	high_scores_panel = _panel(Vector2(210, -170), Vector2(300, 420))
+	high_scores_panel = _panel(Vector2(230, -178), Vector2(330, 440))
 	root.add_child(high_scores_panel)
 	var scores_box := _vbox(high_scores_panel)
-	var scores_title := Label.new()
-	scores_title.text = "历史最高分"
-	scores_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	scores_title.add_theme_font_size_override("font_size", 22)
-	scores_box.add_child(scores_title)
+	scores_box.add_child(_section_title("历史最高分"))
 	high_scores_label = Label.new()
-	high_scores_label.custom_minimum_size = Vector2(260, 330)
+	high_scores_label.custom_minimum_size = Vector2(290, 340)
 	high_scores_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	high_scores_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	high_scores_label.add_theme_font_size_override("font_size", 16)
+	high_scores_label.add_theme_color_override("font_color", Color(0.82, 0.9, 0.92))
 	scores_box.add_child(high_scores_label)
 	_update_high_scores_label()
 
-	pause_panel = _panel(Vector2(-150, -120), Vector2(300, 280))
+	pause_panel = _panel(Vector2(-170, -120), Vector2(340, 300))
 	root.add_child(pause_panel)
 	var pause_box := _vbox(pause_panel)
+	pause_box.add_child(_section_title("暂停"))
 	pause_box.add_child(_button("继续游戏", resume_game))
 	pause_box.add_child(_button("选择场景", _show_scenes_from_pause))
 	pause_box.add_child(_button("设置", _show_settings_from_pause))
 	pause_box.add_child(_button("返回主菜单", _return_to_main_menu))
 
-	scenes_panel = _panel(Vector2(-210, -150), Vector2(420, 330))
+	scenes_panel = _panel(Vector2(-230, -170), Vector2(460, 380))
 	root.add_child(scenes_panel)
 	var scenes_box := _vbox(scenes_panel)
-	var scenes_title := Label.new()
-	scenes_title.text = "选择场景"
-	scenes_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	scenes_title.add_theme_font_size_override("font_size", 26)
-	scenes_box.add_child(scenes_title)
+	scenes_box.add_child(_section_title("选择场景"))
+	scenes_box.add_child(_note_label("选择后会直接开始对应训练"))
 	scenes_box.add_child(_button("六目标训练", func() -> void: _select_mode("sixshot")))
 	scenes_box.add_child(_button("跟枪训练", func() -> void: _select_mode("tracking")))
 	scenes_box.add_child(_button("快速跟枪", func() -> void: _select_mode("tracking_fast")))
 	scenes_box.add_child(_button("返回", _back_from_scenes))
 
-	settings_panel = _panel(Vector2(-230, -205), Vector2(460, 440))
+	settings_panel = _panel(Vector2(-250, -220), Vector2(500, 470))
 	root.add_child(settings_panel)
 	var settings_box := _vbox(settings_panel)
-
-	var settings_title := Label.new()
-	settings_title.text = "设置"
-	settings_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	settings_title.add_theme_font_size_override("font_size", 26)
-	settings_box.add_child(settings_title)
+	settings_box.add_child(_section_title("设置"))
 
 	settings_box.add_child(_slider_row("灵敏度", 0.1, 10.0, 0.1, sensitivity, _on_sensitivity_changed, true))
 	settings_box.add_child(_slider_row("音量", 0.0, 100.0, 1.0, volume * 100.0, _on_volume_changed, false))
@@ -399,20 +436,81 @@ func _panel(pos: Vector2, size: Vector2) -> PanelContainer:
 	panel.set_anchors_preset(Control.PRESET_CENTER)
 	panel.position = pos
 	panel.size = size
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.065, 0.08, 0.088, 0.93)
+	style.border_color = Color(0.10, 0.75, 0.82, 0.52)
+	style.border_width_left = 1
+	style.border_width_top = 1
+	style.border_width_right = 1
+	style.border_width_bottom = 1
+	style.corner_radius_top_left = 8
+	style.corner_radius_top_right = 8
+	style.corner_radius_bottom_left = 8
+	style.corner_radius_bottom_right = 8
+	style.content_margin_left = 18
+	style.content_margin_top = 18
+	style.content_margin_right = 18
+	style.content_margin_bottom = 18
+	panel.add_theme_stylebox_override("panel", style)
 	return panel
 
 func _vbox(parent: Control) -> VBoxContainer:
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 14)
+	box.add_theme_constant_override("separation", 12)
 	parent.add_child(box)
 	return box
 
 func _button(text: String, callback: Callable) -> Button:
 	var button := Button.new()
 	button.text = text
-	button.custom_minimum_size = Vector2(260, 48)
+	button.custom_minimum_size = Vector2(300, 48)
+	button.add_theme_font_size_override("font_size", 18)
+	button.add_theme_color_override("font_color", Color(0.90, 0.98, 1.0))
+	button.add_theme_color_override("font_hover_color", Color(1.0, 1.0, 1.0))
+	button.add_theme_stylebox_override("normal", _button_style(Color(0.09, 0.13, 0.14, 0.95), Color(0.10, 0.45, 0.50, 0.85)))
+	button.add_theme_stylebox_override("hover", _button_style(Color(0.08, 0.24, 0.27, 0.98), Color(0.12, 0.88, 0.95, 0.95)))
+	button.add_theme_stylebox_override("pressed", _button_style(Color(0.04, 0.16, 0.18, 1.0), Color(0.7, 0.98, 1.0, 1.0)))
+	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	button.pressed.connect(callback)
 	return button
+
+func _button_style(bg: Color, border: Color) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = bg
+	style.border_color = border
+	style.border_width_left = 1
+	style.border_width_top = 1
+	style.border_width_right = 1
+	style.border_width_bottom = 1
+	style.corner_radius_top_left = 6
+	style.corner_radius_top_right = 6
+	style.corner_radius_bottom_left = 6
+	style.corner_radius_bottom_right = 6
+	style.content_margin_left = 12
+	style.content_margin_top = 8
+	style.content_margin_right = 12
+	style.content_margin_bottom = 8
+	return style
+
+func _section_title(text: String) -> Label:
+	var label := Label.new()
+	label.text = text
+	label.custom_minimum_size = Vector2(300, 34)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override("font_size", 24)
+	label.add_theme_color_override("font_color", Color(0.88, 0.97, 1.0))
+	return label
+
+func _note_label(text: String) -> Label:
+	var label := Label.new()
+	label.text = text
+	label.custom_minimum_size = Vector2(300, 24)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override("font_size", 14)
+	label.add_theme_color_override("font_color", Color(0.58, 0.72, 0.76))
+	return label
 
 func _update_selected_scene_label() -> void:
 	if selected_scene_label == null:
