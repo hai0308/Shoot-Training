@@ -23,8 +23,12 @@ var main_panel: PanelContainer
 var pause_panel: PanelContainer
 var settings_panel: PanelContainer
 var scenes_panel: PanelContainer
+var result_panel: PanelContainer
 var high_scores_panel: PanelContainer
 var high_scores_label: Label
+var result_title_label: Label
+var result_score_label: Label
+var result_note_label: Label
 var selected_scene_label: Label
 var sensitivity_value: Label
 var volume_value: Label
@@ -94,9 +98,17 @@ func training_finished() -> void:
 	if finishing:
 		return
 	finishing = true
+	var final_score := 0
 	if hud and hud.has_method("get_score"):
-		_record_high_score(hud.get_score())
-	await get_tree().create_timer(0.9).timeout
+		final_score = hud.get_score()
+	var new_high_score := _is_new_high_score(final_score, selected_mode)
+	_record_high_score(final_score)
+	if bgm_player:
+		bgm_player.stop()
+	if hud and hud.has_method("stop_training"):
+		hud.stop_training()
+	_show_result_screen(final_score, new_high_score)
+	await get_tree().create_timer(3.2).timeout
 	_return_to_main_menu()
 	finishing = false
 
@@ -151,6 +163,7 @@ func _show_settings() -> void:
 	main_panel.visible = false
 	pause_panel.visible = false
 	scenes_panel.visible = false
+	result_panel.visible = false
 	high_scores_panel.visible = false
 	settings_panel.visible = true
 
@@ -167,6 +180,7 @@ func _show_scenes() -> void:
 	main_panel.visible = false
 	pause_panel.visible = false
 	settings_panel.visible = false
+	result_panel.visible = false
 	high_scores_panel.visible = false
 	scenes_panel.visible = true
 
@@ -185,6 +199,7 @@ func _show_main_menu() -> void:
 	pause_panel.visible = false
 	settings_panel.visible = false
 	scenes_panel.visible = false
+	result_panel.visible = false
 
 func _show_pause_menu() -> void:
 	main_panel.visible = false
@@ -192,6 +207,26 @@ func _show_pause_menu() -> void:
 	pause_panel.visible = true
 	settings_panel.visible = false
 	scenes_panel.visible = false
+	result_panel.visible = false
+
+func _show_result_screen(final_score: int, new_high_score: bool) -> void:
+	visible = true
+	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+	main_panel.visible = false
+	high_scores_panel.visible = false
+	pause_panel.visible = false
+	settings_panel.visible = false
+	scenes_panel.visible = false
+	result_panel.visible = true
+	if new_high_score:
+		result_title_label.text = "恭喜突破最高分!"
+		result_title_label.add_theme_color_override("font_color", Color(1.0, 0.92, 0.42))
+		result_note_label.text = "新的%s纪录已经保存" % _mode_display_name(selected_mode)
+	else:
+		result_title_label.text = "训练完成"
+		result_title_label.add_theme_color_override("font_color", Color(0.88, 0.97, 1.0))
+		result_note_label.text = "%s成绩已记录" % _mode_display_name(selected_mode)
+	result_score_label.text = "本次得分  %d" % final_score
 
 func _quit_game() -> void:
 	get_tree().quit()
@@ -274,6 +309,12 @@ func _record_high_score(value: int) -> void:
 	_save_settings()
 	_update_high_scores_label()
 
+func _is_new_high_score(value: int, mode: String) -> bool:
+	var scores: Array = high_scores.get(mode, [])
+	if scores.is_empty():
+		return true
+	return value > int(scores[0])
+
 func _score_array_from_config(values: Array) -> Array[int]:
 	var result: Array[int] = []
 	for value in values:
@@ -286,7 +327,7 @@ func _sort_and_trim_scores(scores: Array) -> Array[int]:
 		sorted_scores.append(int(value))
 	sorted_scores.sort()
 	sorted_scores.reverse()
-	while sorted_scores.size() > 5:
+	while sorted_scores.size() > 3:
 		sorted_scores.pop_back()
 	return sorted_scores
 
@@ -388,12 +429,12 @@ func _build_ui() -> void:
 	main_box.add_child(_button("退出游戏", _quit_game))
 	_update_selected_scene_label()
 
-	high_scores_panel = _panel(Vector2(230, -178), Vector2(330, 440))
+	high_scores_panel = _panel(Vector2(230, -150), Vector2(330, 360))
 	root.add_child(high_scores_panel)
 	var scores_box := _vbox(high_scores_panel)
 	scores_box.add_child(_section_title("历史最高分"))
 	high_scores_label = Label.new()
-	high_scores_label.custom_minimum_size = Vector2(290, 340)
+	high_scores_label.custom_minimum_size = Vector2(290, 260)
 	high_scores_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	high_scores_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	high_scores_label.add_theme_font_size_override("font_size", 16)
@@ -419,6 +460,26 @@ func _build_ui() -> void:
 	scenes_box.add_child(_button("跟枪训练", func() -> void: _select_mode("tracking")))
 	scenes_box.add_child(_button("快速跟枪", func() -> void: _select_mode("tracking_fast")))
 	scenes_box.add_child(_button("返回", _back_from_scenes))
+
+	result_panel = _panel(Vector2(-230, -130), Vector2(460, 300))
+	root.add_child(result_panel)
+	var result_box := _vbox(result_panel)
+	result_title_label = _section_title("训练完成")
+	result_title_label.add_theme_font_size_override("font_size", 30)
+	result_box.add_child(result_title_label)
+	result_score_label = Label.new()
+	result_score_label.custom_minimum_size = Vector2(420, 82)
+	result_score_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	result_score_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	result_score_label.add_theme_font_size_override("font_size", 34)
+	result_score_label.add_theme_color_override("font_color", Color(0.2, 0.95, 1.0))
+	result_box.add_child(result_score_label)
+	result_note_label = _note_label("即将返回主菜单")
+	result_note_label.custom_minimum_size = Vector2(420, 34)
+	result_box.add_child(result_note_label)
+	var return_label := _note_label("3 秒后返回主菜单")
+	return_label.custom_minimum_size = Vector2(420, 28)
+	result_box.add_child(return_label)
 
 	settings_panel = _panel(Vector2(-250, -220), Vector2(500, 470))
 	root.add_child(settings_panel)
