@@ -13,6 +13,7 @@ var online_api_base := DEFAULT_ONLINE_API_BASE
 var online_username := ""
 var online_token := ""
 var pending_online_action := ""
+var guest_mode := false
 var difficulty := "normal"
 var high_scores := {
 	"sixshot": [],
@@ -43,6 +44,10 @@ var auth_status_label: Label
 var auth_username_input: LineEdit
 var auth_password_input: LineEdit
 var api_base_input: LineEdit
+var auth_enter_button: Button
+var auth_back_button: Button
+var online_scores_button: Button
+var account_button: Button
 var online_status_label: Label
 var online_scores_label: Label
 var result_title_label: Label
@@ -80,7 +85,7 @@ func _ready() -> void:
 	_build_ui()
 	_apply_volume()
 	_apply_crosshair_settings()
-	_show_main_menu()
+	_show_auth(false)
 
 func _process(delta: float) -> void:
 	menu_time += delta
@@ -235,14 +240,24 @@ func _show_scenes_from_pause() -> void:
 	scenes_return = "pause"
 	_show_scenes()
 
-func _show_auth() -> void:
+func _show_auth_from_main() -> void:
+	_show_auth(true)
+
+func _show_auth(allow_back: bool = false) -> void:
 	_hide_all_panels()
 	auth_panel.visible = true
 	if api_base_input:
 		api_base_input.text = online_api_base
+	if auth_enter_button:
+		auth_enter_button.visible = not online_token.is_empty()
+	if auth_back_button:
+		auth_back_button.visible = allow_back or not online_token.is_empty() or guest_mode
 	_update_auth_status()
 
 func _show_online_scores() -> void:
+	if guest_mode or online_token.is_empty():
+		_show_auth(false)
+		return
 	_hide_all_panels()
 	online_scores_panel.visible = true
 	online_scores_label.text = "正在获取联机排行榜..."
@@ -277,6 +292,7 @@ func _back_from_scenes() -> void:
 
 func _show_main_menu() -> void:
 	_hide_all_panels()
+	_update_main_online_buttons()
 	main_panel.visible = true
 	high_scores_panel.visible = true
 
@@ -372,11 +388,24 @@ func _register_online() -> void:
 func _login_online() -> void:
 	_send_auth_request("login")
 
+func _enter_online_main() -> void:
+	if online_token.is_empty():
+		auth_status_label.text = "请先登录，或者使用游客游玩"
+		return
+	guest_mode = false
+	_show_main_menu()
+
+func _continue_as_guest() -> void:
+	guest_mode = true
+	_show_main_menu()
+
 func _logout_online() -> void:
 	online_username = ""
 	online_token = ""
+	guest_mode = false
 	_save_settings()
 	_update_auth_status()
+	_show_auth(false)
 
 func _send_auth_request(action: String) -> void:
 	if _online_busy():
@@ -395,7 +424,7 @@ func _send_auth_request(action: String) -> void:
 	})
 
 func _submit_online_score(score_value: int) -> void:
-	if online_token.is_empty() or _online_busy():
+	if guest_mode or online_token.is_empty() or _online_busy():
 		return
 	pending_online_action = "submit-score"
 	_post_json("/api/submit-score", {
@@ -450,9 +479,11 @@ func _on_online_request_completed(_result: int, response_code: int, _headers: Pa
 		"login":
 			online_username = str(data.get("username", ""))
 			online_token = str(data.get("token", ""))
+			guest_mode = false
 			auth_password_input.text = ""
 			_save_settings()
 			_update_auth_status()
+			_show_main_menu()
 		"submit-score":
 			pass
 		"leaderboards":
@@ -488,9 +519,18 @@ func _update_auth_status() -> void:
 		auth_username_input.text = online_username
 
 func _online_status_text() -> String:
+	if guest_mode:
+		return "游客模式 - 只能游玩单机训练，联机排行不会显示或上传"
 	if online_username.is_empty():
 		return "未登录 - 在线排行需要登录后提交分数"
 	return "已登录: %s" % online_username
+
+func _update_main_online_buttons() -> void:
+	if account_button:
+		account_button.text = "切换账号" if not online_token.is_empty() and not guest_mode else "登录/注册"
+	if online_scores_button:
+		online_scores_button.disabled = guest_mode or online_token.is_empty()
+		online_scores_button.text = "联机排行" if not online_scores_button.disabled else "联机排行(登录后可用)"
 
 func _render_online_leaderboards(leaderboards) -> void:
 	if online_scores_label == null:
@@ -706,8 +746,10 @@ func _build_ui() -> void:
 	selected_scene_label.custom_minimum_size = Vector2(300, 28)
 	main_box.add_child(selected_scene_label)
 	main_box.add_child(_button("选择场景", _show_scenes_from_main))
-	main_box.add_child(_button("登录/注册", _show_auth))
-	main_box.add_child(_button("联机排行", _show_online_scores))
+	account_button = _button("登录/注册", _show_auth_from_main)
+	main_box.add_child(account_button)
+	online_scores_button = _button("联机排行", _show_online_scores)
+	main_box.add_child(online_scores_button)
 	main_box.add_child(_button("设置", _show_settings_from_main))
 	main_box.add_child(_button("退出游戏", _quit_game))
 	_update_selected_scene_label()
@@ -745,7 +787,7 @@ func _build_ui() -> void:
 	scenes_box.add_child(_button("反应训练", func() -> void: _select_mode("reaction")))
 	scenes_box.add_child(_button("返回", _back_from_scenes))
 
-	auth_panel = _panel(Vector2(-250, -235), Vector2(500, 520))
+	auth_panel = _panel(Vector2(-250, -315), Vector2(500, 650))
 	root.add_child(auth_panel)
 	var auth_box := _vbox(auth_panel)
 	auth_box.add_child(_section_title("账号登录"))
@@ -761,8 +803,12 @@ func _build_ui() -> void:
 	auth_box.add_child(auth_password_input)
 	auth_box.add_child(_button("注册", _register_online))
 	auth_box.add_child(_button("登录", _login_online))
+	auth_enter_button = _button("进入主菜单", _enter_online_main)
+	auth_box.add_child(auth_enter_button)
+	auth_box.add_child(_button("游客游玩", _continue_as_guest))
 	auth_box.add_child(_button("退出登录", _logout_online))
-	auth_box.add_child(_button("返回", _show_main_menu))
+	auth_back_button = _button("返回", _show_main_menu)
+	auth_box.add_child(auth_back_button)
 
 	online_scores_panel = _panel(Vector2(-280, -235), Vector2(560, 540))
 	root.add_child(online_scores_panel)
