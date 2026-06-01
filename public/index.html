@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Shoot Training Online</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
+        background: #10131a;
+        color: #f5f7fb;
+      }
+
+      body {
+        min-height: 100vh;
+        margin: 0;
+        display: grid;
+        place-items: center;
+        background:
+          radial-gradient(circle at 25% 20%, rgba(60, 190, 255, 0.18), transparent 30%),
+          radial-gradient(circle at 80% 75%, rgba(255, 196, 75, 0.12), transparent 32%),
+          #10131a;
+      }
+
+      main {
+        width: min(520px, calc(100vw - 48px));
+        padding: 32px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 8px;
+        background: rgba(17, 21, 30, 0.82);
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
+      }
+
+      h1 {
+        margin: 0 0 10px;
+        font-size: 28px;
+        letter-spacing: 0;
+      }
+
+      p {
+        margin: 0;
+        line-height: 1.7;
+        color: #cbd3e4;
+      }
+
+      code {
+        color: #70d7ff;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Shoot Training Online</h1>
+      <p>联机登录与排行榜服务已启用。游戏客户端会通过 <code>/api</code> 接口提交和读取成绩。</p>
+    </main>
+  </body>
+</html>

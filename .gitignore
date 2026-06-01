@@ -7,3 +7,8 @@ node_modules/
 # Exported builds
 /Shoot Training/
 /Shoot Training demo.zip
+/Shoot Training demo2.zip
+
+# Node / Netlify backend
+/node_modules/
+/.netlify/

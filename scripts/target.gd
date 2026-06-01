@@ -8,9 +8,16 @@ var idle_material: Material
 var hit_material: Material
 var alive := true
 var mesh_instance: MeshInstance3D
+var pulse_seed := 0.0
 
 func _ready() -> void:
+	pulse_seed = randf_range(0.0, TAU)
 	call_deferred("_cache_mesh")
+
+func _process(delta: float) -> void:
+	if alive and visible:
+		var pulse := 1.0 + sin(Time.get_ticks_msec() * 0.006 + pulse_seed) * 0.035
+		scale = scale.lerp(Vector3.ONE * pulse, delta * 8.0)
 
 func _cache_mesh() -> void:
 	mesh_instance = get_node_or_null("TargetMesh") as MeshInstance3D
@@ -32,7 +39,10 @@ func _hide_and_respawn() -> void:
 	await tween.finished
 	monitorable = false
 	visible = false
-	await get_tree().create_timer(0.18).timeout
+	var delay := 0.18
+	if arena and arena.has_method("get_target_respawn_delay"):
+		delay = arena.get_target_respawn_delay(self)
+	await get_tree().create_timer(delay).timeout
 	if arena and arena.has_method("get_next_target_position"):
 		spawn_origin = arena.get_next_target_position(self)
 	global_position = spawn_origin

@@ -11,6 +11,7 @@ const TARGET_Y_MAX := 4.25
 const MODE_SIXSHOT := "sixshot"
 const MODE_TRACKING := "tracking"
 const MODE_TRACKING_FAST := "tracking_fast"
+const MODE_REACTION := "reaction"
 
 var wall_mat: StandardMaterial3D
 var floor_mat: StandardMaterial3D
@@ -24,6 +25,10 @@ var current_mode := MODE_SIXSHOT
 var tracking_target: Area3D
 var tracking_velocity := Vector3.ZERO
 var tracking_speed := 2.1
+var arena_time := 0.0
+var pulse_light: OmniLight3D
+var target_size_multiplier := 1.0
+var speed_multiplier := 1.0
 
 func _ready() -> void:
 	_create_materials()
@@ -34,6 +39,9 @@ func _ready() -> void:
 		player.arena = self
 
 func _process(delta: float) -> void:
+	arena_time += delta
+	if pulse_light:
+		pulse_light.light_energy = 0.75 + abs(sin(arena_time * 1.7)) * 0.65
 	if _is_tracking_mode() and _is_training_active():
 		_update_tracking_target(delta)
 
@@ -41,16 +49,30 @@ func start_mode(mode: String) -> void:
 	current_mode = mode
 	_clear_targets()
 	if _is_tracking_mode():
-		tracking_speed = 3.1 if current_mode == MODE_TRACKING_FAST else 2.1
+		tracking_speed = (3.1 if current_mode == MODE_TRACKING_FAST else 2.1) * speed_multiplier
 		_build_tracking_target()
+	elif current_mode == MODE_REACTION:
+		_build_reaction_target()
 	else:
 		_build_targets()
 
 func is_click_scoring_mode() -> bool:
-	return current_mode == MODE_SIXSHOT
+	return current_mode == MODE_SIXSHOT or current_mode == MODE_REACTION
 
 func get_mode_name() -> String:
 	return current_mode
+
+func set_difficulty(difficulty: String) -> void:
+	match difficulty:
+		"easy":
+			target_size_multiplier = 1.18
+			speed_multiplier = 0.82
+		"hard":
+			target_size_multiplier = 0.82
+			speed_multiplier = 1.22
+		_:
+			target_size_multiplier = 1.0
+			speed_multiplier = 1.0
 
 func spawn_impact(point: Vector3, normal: Vector3, hit_target: bool) -> void:
 	var mark := MeshInstance3D.new()
@@ -108,6 +130,14 @@ func _build_lighting() -> void:
 	fill.omni_range = 18.0
 	add_child(fill)
 
+	pulse_light = OmniLight3D.new()
+	pulse_light.name = "PulseTrainingLight"
+	pulse_light.position = Vector3(0, 2.8, -6.8)
+	pulse_light.light_color = Color(0.08, 0.82, 1.0)
+	pulse_light.light_energy = 0.85
+	pulse_light.omni_range = 7.0
+	add_child(pulse_light)
+
 func _build_room() -> void:
 	_add_block("Floor", Vector3(0, -0.08, 0), Vector3(18, 0.16, 22), floor_mat)
 	_add_block("Ceiling", Vector3(0, 5.25, 0), Vector3(18, 0.28, 22), wall_mat)
@@ -134,6 +164,11 @@ func _build_targets() -> void:
 
 func get_next_target_position(target: Area3D) -> Vector3:
 	return _random_target_position(target)
+
+func get_target_respawn_delay(_target: Area3D) -> float:
+	if current_mode == MODE_REACTION:
+		return randf_range(0.35, 1.05)
+	return 0.18
 
 func _random_target_position(ignore_target: Area3D = null) -> Vector3:
 	for attempt in 80:
@@ -173,15 +208,16 @@ func _add_target(node_name: String, position: Vector3) -> void:
 	var mesh := MeshInstance3D.new()
 	mesh.name = "TargetMesh"
 	var sphere := SphereMesh.new()
-	sphere.radius = 0.24
-	sphere.height = 0.48
+	sphere.radius = 0.24 * target_size_multiplier
+	sphere.height = 0.48 * target_size_multiplier
 	mesh.mesh = sphere
 	mesh.material_override = target_mat
 	target.add_child(mesh)
 
 	var shape := CollisionShape3D.new()
+	shape.name = "CollisionShape3D"
 	var sphere_shape := SphereShape3D.new()
-	sphere_shape.radius = 0.25
+	sphere_shape.radius = 0.25 * target_size_multiplier
 	shape.shape = sphere_shape
 	target.add_child(shape)
 
@@ -191,6 +227,21 @@ func _add_target(node_name: String, position: Vector3) -> void:
 	glow.light_energy = 0.18
 	glow.omni_range = 1.4
 	target.add_child(glow)
+
+func _build_reaction_target() -> void:
+	_add_target("ReactionTarget", _random_target_position())
+	if targets.size() > 0:
+		var target := targets[0]
+		target.scale = Vector3.ONE * 1.12
+		var mesh := target.get_node_or_null("TargetMesh") as MeshInstance3D
+		if mesh:
+			var sphere := SphereMesh.new()
+			sphere.radius = 0.32 * target_size_multiplier
+			sphere.height = 0.64 * target_size_multiplier
+			mesh.mesh = sphere
+		var shape := target.get_node_or_null("CollisionShape3D") as CollisionShape3D
+		if shape and shape.shape is SphereShape3D:
+			(shape.shape as SphereShape3D).radius = 0.34 * target_size_multiplier
 
 func _build_tracking_target() -> void:
 	tracking_target = Area3D.new()
@@ -205,15 +256,15 @@ func _build_tracking_target() -> void:
 	var mesh := MeshInstance3D.new()
 	mesh.name = "TrackingTargetMesh"
 	var sphere := SphereMesh.new()
-	sphere.radius = 0.32
-	sphere.height = 0.64
+	sphere.radius = 0.32 * target_size_multiplier
+	sphere.height = 0.64 * target_size_multiplier
 	mesh.mesh = sphere
 	mesh.material_override = cyan_mat
 	tracking_target.add_child(mesh)
 
 	var shape := CollisionShape3D.new()
 	var sphere_shape := SphereShape3D.new()
-	sphere_shape.radius = 0.34
+	sphere_shape.radius = 0.34 * target_size_multiplier
 	shape.shape = sphere_shape
 	tracking_target.add_child(shape)
 
@@ -238,6 +289,7 @@ func _update_tracking_target(delta: float) -> void:
 		var turn := Vector3(randf_range(-0.8, 0.8), randf_range(-0.65, 0.65), 0.0)
 		tracking_velocity = (tracking_velocity.normalized() + turn).normalized() * tracking_speed
 	tracking_target.global_position = pos
+	tracking_target.scale = Vector3.ONE * (1.0 + sin(arena_time * 8.0) * 0.045)
 
 func _clear_targets() -> void:
 	for target in targets:
